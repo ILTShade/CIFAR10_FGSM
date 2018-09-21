@@ -48,6 +48,13 @@ class LeNet(nn.Module):
 
 def get_net():
     net = LeNet(10)
+    for module in net.modules():
+        if isinstance(module, nn.Conv2d):
+            n = module.kernel_size[0] * module.kernel_size[1] * module.out_channels
+            module.weight.data.normal_(0, math.sqrt(2. / n))
+        elif isinstance(module, nn.BatchNorm2d):
+            module.weight.data.fill_(1)
+            module.bias.data.zero_()
     return net
 
 if __name__ == '__main__':

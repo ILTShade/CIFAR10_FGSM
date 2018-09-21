@@ -6,9 +6,8 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 import time
 from tensorboardX import SummaryWriter
-tensorboard_writer = SummaryWriter()
+global tensorboard_writer
 
-BASE_LR = 0.1
 MOMENTUM = 0.9
 WEIGHT_DECAY = 0.0001
 MILESTONES = [50, 75]
@@ -24,7 +23,7 @@ SGD: base_lr %f momentum %f weight_decay %f
 ## lr_policy
 MultiStepLR: milestones [%s] gamma %f epochs %d
 '''%(
-BASE_LR,
+0,
 MOMENTUM,
 WEIGHT_DECAY,
 ', '.join(str(e) for e in MILESTONES),
@@ -32,12 +31,14 @@ GAMMA,
 EPOCHS,
 )
 
-def train_net(net, train_loader, test_loader, device, prefix):
+def train_net(net, train_loader, test_loader, lr, device, prefix):
+    global tensorboard_writer
+    tensorboard_writer = SummaryWriter(comment = prefix)
     # set net on gpu
     net.to(device)
     # loss and optimizer
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr = BASE_LR, momentum = MOMENTUM, weight_decay = WEIGHT_DECAY)
+    optimizer = optim.SGD(net.parameters(), lr = lr, momentum = MOMENTUM, weight_decay = WEIGHT_DECAY)
     scheduler = lr_scheduler.MultiStepLR(optimizer, milestones = MILESTONES, gamma = GAMMA)
     # initial test
     eval_net(net, test_loader, 0, device)
