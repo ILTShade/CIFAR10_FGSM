@@ -42,8 +42,9 @@ def train_net(net, train_loader, test_loader, lr, device, prefix):
     criterion_cent = CenterLoss(num_classes = 10, feat_dim = 128)
     criterion_cent.to(device)
     optimizer = optim.SGD(net.parameters(), lr = lr, momentum = MOMENTUM, weight_decay = WEIGHT_DECAY)
-    optimizer_cent = optim.SGD(criterion_cent.parameters(), lr = 0.1)
+    optimizer_cent = optim.SGD(criterion_cent.parameters(), lr = lr, momentum = MOMENTUM)
     scheduler = lr_scheduler.MultiStepLR(optimizer, milestones = MILESTONES, gamma = GAMMA)
+    scheduler_cent = lr_scheduler.MultiStepLR(optimizer_cent, milestones = MILESTONES, gamma = GAMMA)
     # initial test
     eval_net(net, test_loader, 0, device)
     # epochs
@@ -51,6 +52,7 @@ def train_net(net, train_loader, test_loader, lr, device, prefix):
         # train
         net.train()
         scheduler.step()
+        scheduler_cent.step()
         for i, (images, labels) in enumerate(train_loader):
             net.zero_grad()
             optimizer.zero_grad()
@@ -59,13 +61,13 @@ def train_net(net, train_loader, test_loader, lr, device, prefix):
             labels = labels.to(device)
             features, outputs = net(images)
             loss_xent = criterion(outputs, labels)
-            loss_cent = criterion(features, labels)
+            loss_cent = 0.1 * criterion(features, labels)
             loss = loss_xent + loss_cent
             loss.backward()
             optimizer.step()
             optimizer_cent.step()
             print(f'epoch {epoch+1:3d}, {i:3d}|{len(train_loader):3d}, loss_xent: {loss_xent.item():2.4f}, loss_cent: {loss_cent.item():2.4f} ', end = '\r')
-            tensorboard_writer.add_scalars('train_loss', {'train_loss_xent': loss_xent.item()}, {'train_loss_cent': loss_cent.item()}, epoch * len(train_loader) + i)
+            tensorboard_writer.add_scalars('train_loss', {'train_loss_xent': loss_xent.item(), 'train_loss_cent': loss_cent.item()}, epoch * len(train_loader) + i)
         eval_net(net, test_loader, epoch + 1, device)
         torch.save(net.state_dict(), f'zoo/{prefix}_params.pth')
 
@@ -90,4 +92,4 @@ def eval_net(net, test_loader, epoch, device):
 
 if __name__ == '__main__':
     print(TRAIN_PARAMETER)
-    print('在上述训练分类的参数基础上，加入了center_loss，和分类loss的权重比例为1:1，center_loss固定学习率为0.1')
+    print('在上述训练分类的参数基础上，加入了center_loss，和分类loss的权重比例为1 : 0.1')
